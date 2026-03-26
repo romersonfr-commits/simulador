@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>Bee DOOH Vídeo</title>
+<title>Bee DOOH Frota</title>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
 
@@ -14,50 +14,46 @@ body {
 }
 
 /* MAPA */
-#map { width:65%; height:100vh; }
+#map { width:60%; height:100vh; }
 
 /* PAINEL */
 #panel {
-  width:35%;
+  width:40%;
   background:#111;
   color:#fff;
-  padding:15px;
+  padding:10px;
+  overflow:auto;
 }
 
 .logo {
   color:#FFD600;
   font-weight:bold;
   font-size:18px;
-  margin-bottom:15px;
-}
-
-/* TELA DO CARRO */
-#playerBox {
-  background:#000;
-  border-radius:12px;
-  overflow:hidden;
-  margin-bottom:15px;
-  border:2px solid #222;
-}
-
-video {
-  width:100%;
-  height:200px;
-  object-fit:cover;
-}
-
-/* INFO */
-.card {
-  background:#1a1a1a;
-  padding:10px;
-  border-radius:10px;
   margin-bottom:10px;
 }
 
-.card span {
+/* CARDS */
+.car {
+  background:#1a1a1a;
+  border-radius:10px;
+  margin-bottom:10px;
+  padding:10px;
+}
+
+.car video {
+  width:100%;
+  height:120px;
+  border-radius:8px;
+  object-fit:cover;
+}
+
+.info {
+  font-size:12px;
+  margin-top:5px;
+}
+
+.info span {
   color:#FFD600;
-  display:block;
-  font-size:16px;
 }
 
 /* PIN */
@@ -90,14 +86,8 @@ video {
 <div id="map"></div>
 
 <div id="panel">
-  <div class="logo">🐝 Bee DOOH</div>
-
-  <div id="playerBox">
-    <video id="player" autoplay muted loop></video>
-  </div>
-
-  <div class="card">Bairro<span id="bairro">-</span></div>
-  <div class="card">Anúncio<span id="anuncio">-</span></div>
+  <div class="logo">🐝 Bee DOOH Frota</div>
+  <div id="cars"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -108,7 +98,7 @@ const map = L.map('map').setView([-29.754, -51.149], 13);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-// ZONAS + VÍDEOS
+// ZONAS
 const zonas = [
   {
     nome:"Centro",
@@ -135,7 +125,7 @@ zonas.forEach(z=>{
   L.polygon(z.coords,{color:"#FFD600", fillOpacity:0.05}).addTo(map);
 });
 
-// pin
+// PIN
 function pin(){
   return L.divIcon({
     html:`<div class="pulse online"></div>`,
@@ -144,24 +134,7 @@ function pin(){
   });
 }
 
-// carro
-let carro = {
-  lat:-29.754,
-  lng:-51.149,
-  step:0
-};
-
-const rota = [
-  [-29.754,-51.149],
-  [-29.758,-51.150],
-  [-29.765,-51.150],
-  [-29.770,-51.150],
-  [-29.755,-51.135]
-];
-
-const marker = L.marker([carro.lat,carro.lng],{icon:pin()}).addTo(map);
-
-// detectar poligono
+// DETECÇÃO
 function dentro(p, vs){
   let x=p[0], y=p[1], inside=false;
   for(let i=0,j=vs.length-1;i<vs.length;j=i++){
@@ -173,38 +146,79 @@ function dentro(p, vs){
   return inside;
 }
 
-// player
-const player = document.getElementById("player");
-let videoAtual = "";
+// CRIAR CARROS
+const carros = [];
+const markers = {};
+
+for(let i=1;i<=8;i++){
+  carros.push({
+    id:"Carro "+i,
+    lat:-29.754+(Math.random()-0.5)*0.02,
+    lng:-51.149+(Math.random()-0.5)*0.02,
+    step:0,
+    videoAtual:""
+  });
+}
+
+// HTML dos carros
+const carsDiv = document.getElementById("cars");
+
+carros.forEach(c=>{
+
+  // marker
+  const marker = L.marker([c.lat,c.lng],{icon:pin()}).addTo(map);
+  markers[c.id] = marker;
+
+  // criar card
+  const div = document.createElement("div");
+  div.className="car";
+
+  div.innerHTML = `
+    <b>${c.id}</b>
+    <video id="vid${c.id}" autoplay muted loop></video>
+    <div class="info">
+      Bairro: <span id="b${c.id}">-</span><br>
+      Anúncio: <span id="a${c.id}">-</span>
+    </div>
+  `;
+
+  carsDiv.appendChild(div);
+
+});
 
 // LOOP
 setInterval(()=>{
 
-  carro.step = (carro.step+1)%rota.length;
-  carro.lat = rota[carro.step][0];
-  carro.lng = rota[carro.step][1];
+  carros.forEach(c=>{
 
-  marker.setLatLng([carro.lat,carro.lng]);
+    // movimento aleatório
+    c.lat += (Math.random()-0.5)*0.002;
+    c.lng += (Math.random()-0.5)*0.002;
 
-  let bairro="-", anuncio="-", video="";
+    markers[c.id].setLatLng([c.lat,c.lng]);
 
-  zonas.forEach(z=>{
-    if(dentro([carro.lat,carro.lng], z.coords)){
-      bairro = z.nome;
-      anuncio = z.anuncio;
-      video = z.video;
+    let bairro="-", anuncio="-", video="";
+
+    zonas.forEach(z=>{
+      if(dentro([c.lat,c.lng], z.coords)){
+        bairro=z.nome;
+        anuncio=z.anuncio;
+        video=z.video;
+      }
+    });
+
+    document.getElementById("b"+c.id).innerText=bairro;
+    document.getElementById("a"+c.id).innerText=anuncio;
+
+    const vid = document.getElementById("vid"+c.id);
+
+    if(video && video !== c.videoAtual){
+      vid.src = video;
+      vid.play();
+      c.videoAtual = video;
     }
+
   });
-
-  document.getElementById("bairro").innerText = bairro;
-  document.getElementById("anuncio").innerText = anuncio;
-
-  // trocar vídeo
-  if(video && video !== videoAtual){
-    player.src = video;
-    player.play();
-    videoAtual = video;
-  }
 
 },3000);
 

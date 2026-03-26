@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bee DOOH - Painel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #0f0f0f;
+      color: #fff;
+    }
+
+    header {
+      background: #FFD600;
+      color: #000;
+      padding: 15px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    #map {
+      height: 90vh;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>🐝 Bee Geomarketing - Monitoramento</header>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+const map = L.map('map').setView([-29.754, -51.149], 13);
+
+// mapa base
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+// simulação de 10 carros
+const carros = [];
+
+for (let i = 1; i <= 10; i++) {
+  carros.push({
+    id: "carro" + i,
+    lat: -29.75 + (Math.random() - 0.5) * 0.02,
+    lng: -51.15 + (Math.random() - 0.5) * 0.02,
+    online: true,
+    tempoAtivo: 0
+  });
+}
+
+// criar marcadores
+const markers = {};
+
+carros.forEach(carro => {
+  const marker = L.marker([carro.lat, carro.lng]).addTo(map)
+    .bindPopup(`${carro.id}<br>Online`);
+
+  markers[carro.id] = marker;
+});
+
+// simular movimento + status
+setInterval(() => {
+  carros.forEach(carro => {
+
+    // movimentação fake
+    carro.lat += (Math.random() - 0.5) * 0.001;
+    carro.lng += (Math.random() - 0.5) * 0.001;
+
+    // simular online/offline
+    if (Math.random() < 0.05) {
+      carro.online = !carro.online;
+    }
+
+    if (carro.online) {
+      carro.tempoAtivo += 5;
+    }
+
+    // atualizar marker
+    const marker = markers[carro.id];
+    marker.setLatLng([carro.lat, carro.lng]);
+
+    const status = carro.online ? "🟢 Online" : "🔴 Offline";
+
+    marker.setPopupContent(`
+      <b>${carro.id}</b><br>
+      ${status}<br>
+      ⏱️ ${Math.floor(carro.tempoAtivo/60)} min
+    `);
+  });
+}, 5000);
+</script>
+
+</body>
+</html>

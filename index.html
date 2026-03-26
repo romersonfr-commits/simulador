@@ -7,34 +7,55 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
 
 <style>
-body {
-  margin:0;
-  font-family:Arial;
+body { margin:0; font-family:Arial; }
+
+/* LOGIN */
+#login {
   display:flex;
   height:100vh;
-}
-
-/* MENU */
-#menu {
-  width:200px;
+  justify-content:center;
+  align-items:center;
   background:#111;
   color:#fff;
-  padding:10px;
+}
+
+#loginBox {
+  background:#1a1a1a;
+  padding:20px;
+  border-radius:10px;
+  width:250px;
+}
+
+input {
+  width:100%;
+  padding:8px;
+  margin-bottom:10px;
 }
 
 button {
   width:100%;
   padding:10px;
-  margin-bottom:5px;
   background:#FFD600;
   border:none;
   border-radius:6px;
   cursor:pointer;
 }
 
-/* CONTEÚDO */
+/* APP */
+#app { display:none; height:100vh; }
+
+#menu {
+  width:200px;
+  background:#111;
+  color:#fff;
+  padding:10px;
+  float:left;
+  height:100%;
+}
+
 #content {
-  flex:1;
+  margin-left:200px;
+  height:100%;
   display:flex;
 }
 
@@ -46,15 +67,14 @@ button {
   width:40%;
   background:#1a1a1a;
   color:#fff;
-  padding:10px;
   overflow:auto;
+  padding:10px;
 }
 
-/* CARDS */
 .car {
   background:#222;
-  padding:10px;
   margin-bottom:10px;
+  padding:10px;
   border-radius:10px;
 }
 
@@ -62,13 +82,6 @@ video {
   width:100%;
   height:120px;
   border-radius:8px;
-}
-
-/* FORM */
-input {
-  width:100%;
-  padding:8px;
-  margin-bottom:5px;
 }
 
 /* PIN */
@@ -98,33 +111,45 @@ input {
 
 <body>
 
-<div id="menu">
-  <h3 style="color:#FFD600;">Bee DOOH</h3>
-  <button onclick="mostrar('mapa')">🚗 Operação</button>
-  <button onclick="mostrar('cadastro')">📢 Anunciantes</button>
+<!-- LOGIN -->
+<div id="login">
+  <div id="loginBox">
+    <h3>Bee DOOH</h3>
+    <input id="user" placeholder="Usuário"/>
+    <input id="pass" type="password" placeholder="Senha"/>
+    <button onclick="login()">Entrar</button>
+  </div>
 </div>
 
-<div id="content">
+<!-- APP -->
+<div id="app">
 
-  <!-- MAPA -->
-  <div id="mapaView" style="display:flex; width:100%;">
-    <div id="map"></div>
-    <div id="panel"></div>
+  <div id="menu">
+    <button onclick="mostrar('mapa')">🚗 Operação</button>
+    <button onclick="mostrar('ads')">📢 Campanhas</button>
   </div>
 
-  <!-- CADASTRO -->
-  <div id="cadastroView" style="display:none; padding:20px; width:100%;">
+  <div id="content">
 
-    <h2>Cadastro de Anunciante</h2>
+    <!-- MAPA -->
+    <div id="mapaView" style="display:flex;width:100%;">
+      <div id="map"></div>
+      <div id="panel"></div>
+    </div>
 
-    <input id="nome" placeholder="Nome do cliente"/>
-    <input id="bairro" placeholder="Bairro (Centro, Feitoria...)"/>
-    <input id="video" placeholder="URL do vídeo"/>
+    <!-- ADS -->
+    <div id="adsView" style="display:none;padding:20px;width:100%;">
+      <h2>Campanhas</h2>
 
-    <button onclick="salvar()">Salvar</button>
+      <input id="nomeAd" placeholder="Nome campanha"/>
+      <input id="bairroAd" placeholder="Bairro"/>
+      <input id="videoAd" placeholder="URL vídeo"/>
 
-    <h3>Lista</h3>
-    <div id="lista"></div>
+      <button onclick="salvarAd()">Salvar</button>
+
+      <h3>Minhas campanhas</h3>
+      <div id="listaAds"></div>
+    </div>
 
   </div>
 
@@ -133,10 +158,29 @@ input {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
 <script>
-// TROCAR TELA
-function mostrar(tela){
-  document.getElementById("mapaView").style.display = tela==="mapa"?"flex":"none";
-  document.getElementById("cadastroView").style.display = tela==="cadastro"?"block":"none";
+
+// LOGIN SIMPLES
+let usuarioAtual = null;
+
+function login(){
+  const u = document.getElementById("user").value;
+  const p = document.getElementById("pass").value;
+
+  if(u && p){
+    usuarioAtual = u;
+
+    document.getElementById("login").style.display="none";
+    document.getElementById("app").style.display="block";
+
+    iniciar();
+  }
+}
+
+// TROCA VIEW
+function mostrar(v){
+  document.getElementById("mapaView").style.display = v==="mapa"?"flex":"none";
+  document.getElementById("adsView").style.display = v==="ads"?"block":"none";
+  listarAds();
 }
 
 // STORAGE
@@ -144,116 +188,117 @@ function getAds(){
   return JSON.parse(localStorage.getItem("ads")||"[]");
 }
 
-function salvar(){
+function salvarAd(){
   const ads = getAds();
 
   ads.push({
-    nome:document.getElementById("nome").value,
-    bairro:document.getElementById("bairro").value,
-    video:document.getElementById("video").value
+    usuario:usuarioAtual,
+    nome:document.getElementById("nomeAd").value,
+    bairro:document.getElementById("bairroAd").value,
+    video:document.getElementById("videoAd").value
   });
 
   localStorage.setItem("ads", JSON.stringify(ads));
-  listar();
+  listarAds();
 }
 
-function listar(){
-  const lista = document.getElementById("lista");
+function listarAds(){
+  const lista = document.getElementById("listaAds");
   lista.innerHTML = "";
 
-  getAds().forEach(a=>{
-    lista.innerHTML += `<div>${a.nome} - ${a.bairro}</div>`;
-  });
+  getAds()
+    .filter(a=>a.usuario===usuarioAtual)
+    .forEach(a=>{
+      lista.innerHTML += `<div>${a.nome} - ${a.bairro}</div>`;
+    });
 }
 
-listar();
+// MAPA + FROTA
+function iniciar(){
 
-// MAPA
-const map = L.map('map').setView([-29.754,-51.149],13);
+  const map = L.map('map').setView([-29.754,-51.149],13);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-// ZONAS
-const zonas = ["Centro","Feitoria","Scharlau"];
+  function pin(){
+    return L.divIcon({
+      html:`<div class="pulse online"></div>`,
+      className:'',
+      iconSize:[14,14]
+    });
+  }
 
-// PIN
-function pin(){
-  return L.divIcon({
-    html:`<div class="pulse online"></div>`,
-    className:'',
-    iconSize:[14,14]
-  });
-}
+  const carros = [];
+  const markers = {};
+  const panel = document.getElementById("panel");
 
-// CARROS
-const carros = [];
-const markers = {};
-
-for(let i=1;i<=6;i++){
-  carros.push({
-    id:"Carro "+i,
-    lat:-29.754+(Math.random()-0.5)*0.02,
-    lng:-51.149+(Math.random()-0.5)*0.02,
-    videoAtual:""
-  });
-}
-
-// PAINEL
-const panel = document.getElementById("panel");
-
-carros.forEach(c=>{
-
-  const marker = L.marker([c.lat,c.lng],{icon:pin()}).addTo(map);
-  markers[c.id] = marker;
-
-  const div = document.createElement("div");
-  div.className="car";
-  div.id="card"+c.id;
-
-  div.innerHTML = `
-    <b>${c.id}</b>
-    <video id="vid${c.id}" autoplay muted loop></video>
-    <div id="info${c.id}">-</div>
-  `;
-
-  panel.appendChild(div);
-
-});
-
-// LOOP
-setInterval(()=>{
-
-  const ads = getAds();
+  for(let i=1;i<=5;i++){
+    carros.push({
+      id:"Carro "+i,
+      lat:-29.754+(Math.random()-0.5)*0.02,
+      lng:-51.149+(Math.random()-0.5)*0.02,
+      videoAtual:""
+    });
+  }
 
   carros.forEach(c=>{
 
-    c.lat += (Math.random()-0.5)*0.002;
-    c.lng += (Math.random()-0.5)*0.002;
+    const marker = L.marker([c.lat,c.lng],{icon:pin()}).addTo(map);
+    markers[c.id]=marker;
 
-    markers[c.id].setLatLng([c.lat,c.lng]);
+    const div = document.createElement("div");
+    div.className="car";
+    div.innerHTML=`
+      <b>${c.id}</b>
+      <video id="vid${c.id}" autoplay muted loop></video>
+      <div id="info${c.id}">-</div>
+    `;
 
-    // escolher bairro aleatório (simulação)
-    const bairro = zonas[Math.floor(Math.random()*zonas.length)];
-
-    // buscar anúncio
-    const anuncio = ads.find(a=>a.bairro.toLowerCase()===bairro.toLowerCase());
-
-    const vid = document.getElementById("vid"+c.id);
-
-    if(anuncio){
-      document.getElementById("info"+c.id).innerHTML =
-        bairro+" - "+anuncio.nome;
-
-      if(anuncio.video !== c.videoAtual){
-        vid.src = anuncio.video;
-        vid.play();
-        c.videoAtual = anuncio.video;
-      }
-    }
-
+    panel.appendChild(div);
   });
 
-},3000);
+  const bairros = ["Centro","Feitoria","Scharlau"];
+
+  setInterval(()=>{
+
+    const ads = getAds();
+
+    carros.forEach(c=>{
+
+      c.lat += (Math.random()-0.5)*0.002;
+      c.lng += (Math.random()-0.5)*0.002;
+
+      markers[c.id].setLatLng([c.lat,c.lng]);
+
+      const bairro = bairros[Math.floor(Math.random()*bairros.length)];
+
+      // filtrar anúncios do usuário OU todos se admin
+      let listaAds = ads;
+
+      if(usuarioAtual !== "admin"){
+        listaAds = ads.filter(a=>a.usuario===usuarioAtual);
+      }
+
+      const anuncio = listaAds.find(a=>a.bairro.toLowerCase()===bairro.toLowerCase());
+
+      const vid = document.getElementById("vid"+c.id);
+
+      if(anuncio){
+        document.getElementById("info"+c.id).innerHTML =
+          bairro+" - "+anuncio.nome;
+
+        if(anuncio.video !== c.videoAtual){
+          vid.src = anuncio.video;
+          vid.play();
+          c.videoAtual = anuncio.video;
+        }
+      }
+
+    });
+
+  },3000);
+
+}
 
 </script>
 

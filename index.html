@@ -2,86 +2,62 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>Bee DOOH SaaS</title>
+<title>Bee DOOH Vídeo</title>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
 
 <style>
-body { margin:0; font-family:Arial; }
-
-/* LOGIN */
-#login {
+body {
+  margin:0;
   display:flex;
-  height:100vh;
-  justify-content:center;
-  align-items:center;
-  background:#111;
-  color:#fff;
-}
-
-#loginBox {
-  background:#1a1a1a;
-  padding:20px;
-  border-radius:10px;
-  width:250px;
-}
-
-input {
-  width:100%;
-  padding:8px;
-  margin-bottom:10px;
-}
-
-button {
-  width:100%;
-  padding:10px;
-  background:#FFD600;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-}
-
-/* APP */
-#app { display:none; height:100vh; }
-
-#menu {
-  width:200px;
-  background:#111;
-  color:#fff;
-  padding:10px;
-  float:left;
-  height:100%;
-}
-
-#content {
-  margin-left:200px;
-  height:100%;
-  display:flex;
+  font-family:Arial;
 }
 
 /* MAPA */
-#map { width:60%; }
+#map { width:65%; height:100vh; }
 
 /* PAINEL */
 #panel {
-  width:40%;
-  background:#1a1a1a;
+  width:35%;
+  background:#111;
   color:#fff;
-  overflow:auto;
-  padding:10px;
+  padding:15px;
 }
 
-.car {
-  background:#222;
-  margin-bottom:10px;
-  padding:10px;
-  border-radius:10px;
+.logo {
+  color:#FFD600;
+  font-weight:bold;
+  font-size:18px;
+  margin-bottom:15px;
+}
+
+/* TELA DO CARRO */
+#playerBox {
+  background:#000;
+  border-radius:12px;
+  overflow:hidden;
+  margin-bottom:15px;
+  border:2px solid #222;
 }
 
 video {
   width:100%;
-  height:120px;
-  border-radius:8px;
+  height:200px;
+  object-fit:cover;
+}
+
+/* INFO */
+.card {
+  background:#1a1a1a;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+}
+
+.card span {
+  color:#FFD600;
+  display:block;
+  font-size:16px;
 }
 
 /* PIN */
@@ -111,194 +87,126 @@ video {
 
 <body>
 
-<!-- LOGIN -->
-<div id="login">
-  <div id="loginBox">
-    <h3>Bee DOOH</h3>
-    <input id="user" placeholder="Usuário"/>
-    <input id="pass" type="password" placeholder="Senha"/>
-    <button onclick="login()">Entrar</button>
-  </div>
-</div>
+<div id="map"></div>
 
-<!-- APP -->
-<div id="app">
+<div id="panel">
+  <div class="logo">🐝 Bee DOOH</div>
 
-  <div id="menu">
-    <button onclick="mostrar('mapa')">🚗 Operação</button>
-    <button onclick="mostrar('ads')">📢 Campanhas</button>
+  <div id="playerBox">
+    <video id="player" autoplay muted loop></video>
   </div>
 
-  <div id="content">
-
-    <!-- MAPA -->
-    <div id="mapaView" style="display:flex;width:100%;">
-      <div id="map"></div>
-      <div id="panel"></div>
-    </div>
-
-    <!-- ADS -->
-    <div id="adsView" style="display:none;padding:20px;width:100%;">
-      <h2>Campanhas</h2>
-
-      <input id="nomeAd" placeholder="Nome campanha"/>
-      <input id="bairroAd" placeholder="Bairro"/>
-      <input id="videoAd" placeholder="URL vídeo"/>
-
-      <button onclick="salvarAd()">Salvar</button>
-
-      <h3>Minhas campanhas</h3>
-      <div id="listaAds"></div>
-    </div>
-
-  </div>
-
+  <div class="card">Bairro<span id="bairro">-</span></div>
+  <div class="card">Anúncio<span id="anuncio">-</span></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
 <script>
+// MAPA
+const map = L.map('map').setView([-29.754, -51.149], 13);
 
-// LOGIN SIMPLES
-let usuarioAtual = null;
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-function login(){
-  const u = document.getElementById("user").value;
-  const p = document.getElementById("pass").value;
-
-  if(u && p){
-    usuarioAtual = u;
-
-    document.getElementById("login").style.display="none";
-    document.getElementById("app").style.display="block";
-
-    iniciar();
+// ZONAS + VÍDEOS
+const zonas = [
+  {
+    nome:"Centro",
+    anuncio:"Farmácia",
+    video:"https://cdn.coverr.co/videos/coverr-shopping-in-the-city-5176/1080p.mp4",
+    coords:[[-29.75,-51.16],[-29.75,-51.14],[-29.76,-51.14],[-29.76,-51.16]]
+  },
+  {
+    nome:"Feitoria",
+    anuncio:"Supermercado",
+    video:"https://cdn.coverr.co/videos/coverr-people-shopping-in-a-supermarket-4983/1080p.mp4",
+    coords:[[-29.76,-51.16],[-29.76,-51.14],[-29.78,-51.14],[-29.78,-51.16]]
+  },
+  {
+    nome:"Scharlau",
+    anuncio:"Oficina",
+    video:"https://cdn.coverr.co/videos/coverr-mechanic-working-1602/1080p.mp4",
+    coords:[[-29.74,-51.14],[-29.74,-51.12],[-29.76,-51.12],[-29.76,-51.14]]
   }
+];
+
+// desenhar zonas
+zonas.forEach(z=>{
+  L.polygon(z.coords,{color:"#FFD600", fillOpacity:0.05}).addTo(map);
+});
+
+// pin
+function pin(){
+  return L.divIcon({
+    html:`<div class="pulse online"></div>`,
+    className:'',
+    iconSize:[14,14]
+  });
 }
 
-// TROCA VIEW
-function mostrar(v){
-  document.getElementById("mapaView").style.display = v==="mapa"?"flex":"none";
-  document.getElementById("adsView").style.display = v==="ads"?"block":"none";
-  listarAds();
+// carro
+let carro = {
+  lat:-29.754,
+  lng:-51.149,
+  step:0
+};
+
+const rota = [
+  [-29.754,-51.149],
+  [-29.758,-51.150],
+  [-29.765,-51.150],
+  [-29.770,-51.150],
+  [-29.755,-51.135]
+];
+
+const marker = L.marker([carro.lat,carro.lng],{icon:pin()}).addTo(map);
+
+// detectar poligono
+function dentro(p, vs){
+  let x=p[0], y=p[1], inside=false;
+  for(let i=0,j=vs.length-1;i<vs.length;j=i++){
+    let xi=vs[i][0], yi=vs[i][1];
+    let xj=vs[j][0], yj=vs[j][1];
+    let intersect=((yi>y)!=(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi);
+    if(intersect) inside=!inside;
+  }
+  return inside;
 }
 
-// STORAGE
-function getAds(){
-  return JSON.parse(localStorage.getItem("ads")||"[]");
-}
+// player
+const player = document.getElementById("player");
+let videoAtual = "";
 
-function salvarAd(){
-  const ads = getAds();
+// LOOP
+setInterval(()=>{
 
-  ads.push({
-    usuario:usuarioAtual,
-    nome:document.getElementById("nomeAd").value,
-    bairro:document.getElementById("bairroAd").value,
-    video:document.getElementById("videoAd").value
+  carro.step = (carro.step+1)%rota.length;
+  carro.lat = rota[carro.step][0];
+  carro.lng = rota[carro.step][1];
+
+  marker.setLatLng([carro.lat,carro.lng]);
+
+  let bairro="-", anuncio="-", video="";
+
+  zonas.forEach(z=>{
+    if(dentro([carro.lat,carro.lng], z.coords)){
+      bairro = z.nome;
+      anuncio = z.anuncio;
+      video = z.video;
+    }
   });
 
-  localStorage.setItem("ads", JSON.stringify(ads));
-  listarAds();
-}
+  document.getElementById("bairro").innerText = bairro;
+  document.getElementById("anuncio").innerText = anuncio;
 
-function listarAds(){
-  const lista = document.getElementById("listaAds");
-  lista.innerHTML = "";
-
-  getAds()
-    .filter(a=>a.usuario===usuarioAtual)
-    .forEach(a=>{
-      lista.innerHTML += `<div>${a.nome} - ${a.bairro}</div>`;
-    });
-}
-
-// MAPA + FROTA
-function iniciar(){
-
-  const map = L.map('map').setView([-29.754,-51.149],13);
-
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-
-  function pin(){
-    return L.divIcon({
-      html:`<div class="pulse online"></div>`,
-      className:'',
-      iconSize:[14,14]
-    });
+  // trocar vídeo
+  if(video && video !== videoAtual){
+    player.src = video;
+    player.play();
+    videoAtual = video;
   }
 
-  const carros = [];
-  const markers = {};
-  const panel = document.getElementById("panel");
-
-  for(let i=1;i<=5;i++){
-    carros.push({
-      id:"Carro "+i,
-      lat:-29.754+(Math.random()-0.5)*0.02,
-      lng:-51.149+(Math.random()-0.5)*0.02,
-      videoAtual:""
-    });
-  }
-
-  carros.forEach(c=>{
-
-    const marker = L.marker([c.lat,c.lng],{icon:pin()}).addTo(map);
-    markers[c.id]=marker;
-
-    const div = document.createElement("div");
-    div.className="car";
-    div.innerHTML=`
-      <b>${c.id}</b>
-      <video id="vid${c.id}" autoplay muted loop></video>
-      <div id="info${c.id}">-</div>
-    `;
-
-    panel.appendChild(div);
-  });
-
-  const bairros = ["Centro","Feitoria","Scharlau"];
-
-  setInterval(()=>{
-
-    const ads = getAds();
-
-    carros.forEach(c=>{
-
-      c.lat += (Math.random()-0.5)*0.002;
-      c.lng += (Math.random()-0.5)*0.002;
-
-      markers[c.id].setLatLng([c.lat,c.lng]);
-
-      const bairro = bairros[Math.floor(Math.random()*bairros.length)];
-
-      // filtrar anúncios do usuário OU todos se admin
-      let listaAds = ads;
-
-      if(usuarioAtual !== "admin"){
-        listaAds = ads.filter(a=>a.usuario===usuarioAtual);
-      }
-
-      const anuncio = listaAds.find(a=>a.bairro.toLowerCase()===bairro.toLowerCase());
-
-      const vid = document.getElementById("vid"+c.id);
-
-      if(anuncio){
-        document.getElementById("info"+c.id).innerHTML =
-          bairro+" - "+anuncio.nome;
-
-        if(anuncio.video !== c.videoAtual){
-          vid.src = anuncio.video;
-          vid.play();
-          c.videoAtual = anuncio.video;
-        }
-      }
-
-    });
-
-  },3000);
-
-}
+},3000);
 
 </script>
 

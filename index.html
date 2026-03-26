@@ -2,66 +2,61 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Bee DOOH - Painel</title>
+  <title>Bee DOOH</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
 
   <style>
     body {
       margin: 0;
-      font-family: 'Segoe UI', Arial;
-      background: #0d0d0d;
+      font-family: Arial;
+      background: #0b0b0b;
       color: #fff;
     }
 
-    /* HEADER MODERNO */
+    /* TOPO CLEAN */
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 15px 20px;
-      background: linear-gradient(90deg, #FFD600, #FFC400);
-      color: #000;
-      font-weight: bold;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    }
-
-    header .title {
-      font-size: 18px;
-    }
-
-    header .status {
+      padding: 8px 12px;
+      background: #111;
       font-size: 12px;
+      border-bottom: 1px solid #222;
     }
 
-    /* DASHBOARD */
-    #dashboard {
-      display: flex;
-      gap: 10px;
-      padding: 10px;
-      background: #121212;
-    }
-
-    .card {
-      flex: 1;
-      background: #1c1c1c;
-      border-radius: 12px;
-      padding: 12px;
-      text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    }
-
-    .card span {
-      display: block;
-      font-size: 20px;
-      font-weight: bold;
+    .logo {
       color: #FFD600;
+      font-weight: bold;
+    }
+
+    #stats {
+      display: flex;
+      gap: 15px;
+    }
+
+    .stat {
+      text-align: center;
+      font-size: 11px;
+    }
+
+    .stat span {
+      display: block;
+      font-size: 13px;
+      color: #FFD600;
+      font-weight: bold;
     }
 
     #map {
-      height: 80vh;
+      height: 92vh;
+    }
+
+    /* ÍCONE ROTACIONÁVEL */
+    .car-icon {
+      width: 28px;
+      height: 28px;
+      transition: transform 0.5s linear;
     }
   </style>
 </head>
@@ -69,15 +64,13 @@
 <body>
 
 <header>
-  <div class="title">🐝 Bee Geomarketing</div>
-  <div class="status">Sistema ativo ●</div>
+  <div class="logo">🐝 Bee</div>
+  <div id="stats">
+    <div class="stat">On<span id="online">0</span></div>
+    <div class="stat">Off<span id="offline">0</span></div>
+    <div class="stat">Min<span id="tempo">0</span></div>
+  </div>
 </header>
-
-<div id="dashboard">
-  <div class="card">Online<span id="online">0</span></div>
-  <div class="card">Offline<span id="offline">0</span></div>
-  <div class="card">Tempo Médio<span id="tempo">0 min</span></div>
-</div>
 
 <div id="map"></div>
 
@@ -90,14 +83,26 @@ const map = L.map('map').setView([-29.754, -51.149], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
   .addTo(map);
 
-// ÍCONE DE CARRO
-const carIcon = L.icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png",
-  iconSize: [32, 32],
-  iconAnchor: [16, 16]
-});
+// FUNÇÃO PARA GERAR ÍCONE
+function criarIcone(cor, angulo) {
+  return L.divIcon({
+    className: '',
+    html: `
+      <img 
+        src="https://cdn-icons-png.flaticon.com/512/744/744465.png"
+        class="car-icon"
+        style="
+          transform: rotate(${angulo}deg);
+          filter: ${cor === 'green' ? 'hue-rotate(90deg)' : 'hue-rotate(0deg)'};
+        "
+      />
+    `,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
+}
 
-// GERAR CARROS
+// CARROS
 const carros = [];
 const markers = {};
 
@@ -107,20 +112,28 @@ for (let i = 1; i <= 10; i++) {
     lat: -29.754 + (Math.random() - 0.5) * 0.02,
     lng: -51.149 + (Math.random() - 0.5) * 0.02,
     online: true,
-    tempoAtivo: 0
+    tempoAtivo: 0,
+    angulo: 0
   });
 }
 
-// CRIAR MARKERS COM ÍCONE
+// CRIAR MARKERS
 carros.forEach(carro => {
   const marker = L.marker([carro.lat, carro.lng], {
-    icon: carIcon
+    icon: criarIcone("green", 0)
   }).addTo(map);
 
   markers[carro.id] = marker;
 });
 
-// ATUALIZAÇÃO
+// CALCULAR DIREÇÃO
+function calcularAngulo(lat1, lng1, lat2, lng2) {
+  const dy = lat2 - lat1;
+  const dx = lng2 - lng1;
+  return Math.atan2(dy, dx) * (180 / Math.PI);
+}
+
+// LOOP
 setInterval(() => {
 
   let onlineCount = 0;
@@ -129,9 +142,15 @@ setInterval(() => {
 
   carros.forEach(carro => {
 
+    const oldLat = carro.lat;
+    const oldLng = carro.lng;
+
     // movimento
     carro.lat += (Math.random() - 0.5) * 0.001;
     carro.lng += (Math.random() - 0.5) * 0.001;
+
+    // calcular direção
+    carro.angulo = calcularAngulo(oldLat, oldLng, carro.lat, carro.lng);
 
     // status
     if (Math.random() < 0.03) {
@@ -148,7 +167,13 @@ setInterval(() => {
     totalTempo += carro.tempoAtivo;
 
     const marker = markers[carro.id];
+
     marker.setLatLng([carro.lat, carro.lng]);
+
+    // atualizar ícone
+    marker.setIcon(
+      criarIcone(carro.online ? "green" : "red", carro.angulo)
+    );
 
     const status = carro.online ? "🟢 Online" : "🔴 Offline";
 
@@ -157,13 +182,14 @@ setInterval(() => {
       ${status}<br>
       ⏱️ ${Math.floor(carro.tempoAtivo/60)} min
     `);
+
   });
 
-  // DASHBOARD
+  // atualizar topo
   document.getElementById("online").innerText = onlineCount;
   document.getElementById("offline").innerText = offlineCount;
   document.getElementById("tempo").innerText =
-    Math.floor((totalTempo / carros.length) / 60) + " min";
+    Math.floor((totalTempo / carros.length) / 60);
 
 }, 5000);
 

@@ -51,10 +51,12 @@
       height: 92vh;
     }
 
-    .car-icon {
-      width: 30px;
-      height: 30px;
-      transition: transform 0.5s linear;
+    .pin {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(0,0,0,0.6);
+      border: 2px solid #fff;
     }
   </style>
 </head>
@@ -75,32 +77,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
 <script>
-// MAPA
+// MAPA MAIS MODERNO (Carto)
 const map = L.map('map').setView([-29.754, -51.149], 13);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-  .addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap & Carto'
+}).addTo(map);
 
-// ÍCONE VISTA DE CIMA
-function criarIcone(cor, angulo) {
+// CRIAR PIN MODERNO
+function criarPin(cor) {
   return L.divIcon({
     className: '',
-    html: `
-      <img 
-        src="https://cdn-icons-png.flaticon.com/512/854/854878.png"
-        class="car-icon"
-        style="
-          transform: rotate(${angulo}deg);
-          filter: ${cor === 'green' ? 'hue-rotate(100deg)' : 'hue-rotate(-50deg)'};
-        "
-      />
-    `,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
+    html: `<div class="pin" style="background:${cor}"></div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9]
   });
 }
 
-// CARROS
+// CARROS (simulação)
 const carros = [];
 const markers = {};
 const trilhas = {};
@@ -112,16 +106,15 @@ for (let i = 1; i <= 10; i++) {
     lng: -51.149 + (Math.random() - 0.5) * 0.02,
     online: true,
     tempoAtivo: 0,
-    angulo: 0,
     path: []
   });
 }
 
-// CRIAR MARKERS E LINHAS
+// CRIAR ELEMENTOS
 carros.forEach(carro => {
 
   const marker = L.marker([carro.lat, carro.lng], {
-    icon: criarIcone("green", 0)
+    icon: criarPin("#00FF88")
   }).addTo(map);
 
   const linha = L.polyline([], {
@@ -134,13 +127,6 @@ carros.forEach(carro => {
   trilhas[carro.id] = linha;
 });
 
-// DIREÇÃO
-function calcularAngulo(lat1, lng1, lat2, lng2) {
-  const dy = lat2 - lat1;
-  const dx = lng2 - lng1;
-  return Math.atan2(dy, dx) * (180 / Math.PI);
-}
-
 // LOOP
 setInterval(() => {
 
@@ -150,15 +136,9 @@ setInterval(() => {
 
   carros.forEach(carro => {
 
-    const oldLat = carro.lat;
-    const oldLng = carro.lng;
-
     // movimento
     carro.lat += (Math.random() - 0.5) * 0.001;
     carro.lng += (Math.random() - 0.5) * 0.001;
-
-    // direção
-    carro.angulo = calcularAngulo(oldLat, oldLng, carro.lat, carro.lng);
 
     // status
     if (Math.random() < 0.03) {
@@ -174,16 +154,15 @@ setInterval(() => {
 
     totalTempo += carro.tempoAtivo;
 
-    // atualizar posição
+    // atualizar marker
     const marker = markers[carro.id];
     marker.setLatLng([carro.lat, carro.lng]);
 
-    // atualizar ícone
     marker.setIcon(
-      criarIcone(carro.online ? "green" : "red", carro.angulo)
+      criarPin(carro.online ? "#00FF88" : "#FF3B3B")
     );
 
-    // atualizar rastro
+    // rastro
     carro.path.push([carro.lat, carro.lng]);
 
     if (carro.path.length > 20) {

@@ -2,58 +2,73 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>Bee DOOH Frota</title>
+<title>Bee DOOH SaaS</title>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
 
 <style>
 body {
   margin:0;
-  display:flex;
   font-family:Arial;
+  display:flex;
+  height:100vh;
+}
+
+/* MENU */
+#menu {
+  width:200px;
+  background:#111;
+  color:#fff;
+  padding:10px;
+}
+
+button {
+  width:100%;
+  padding:10px;
+  margin-bottom:5px;
+  background:#FFD600;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+/* CONTEÚDO */
+#content {
+  flex:1;
+  display:flex;
 }
 
 /* MAPA */
-#map { width:60%; height:100vh; }
+#map { width:60%; }
 
 /* PAINEL */
 #panel {
   width:40%;
-  background:#111;
+  background:#1a1a1a;
   color:#fff;
   padding:10px;
   overflow:auto;
 }
 
-.logo {
-  color:#FFD600;
-  font-weight:bold;
-  font-size:18px;
-  margin-bottom:10px;
-}
-
 /* CARDS */
 .car {
-  background:#1a1a1a;
-  border-radius:10px;
-  margin-bottom:10px;
+  background:#222;
   padding:10px;
+  margin-bottom:10px;
+  border-radius:10px;
 }
 
-.car video {
+video {
   width:100%;
   height:120px;
   border-radius:8px;
-  object-fit:cover;
 }
 
-.info {
-  font-size:12px;
-  margin-top:5px;
-}
-
-.info span {
-  color:#FFD600;
+/* FORM */
+input {
+  width:100%;
+  padding:8px;
+  margin-bottom:5px;
 }
 
 /* PIN */
@@ -83,47 +98,83 @@ body {
 
 <body>
 
-<div id="map"></div>
+<div id="menu">
+  <h3 style="color:#FFD600;">Bee DOOH</h3>
+  <button onclick="mostrar('mapa')">🚗 Operação</button>
+  <button onclick="mostrar('cadastro')">📢 Anunciantes</button>
+</div>
 
-<div id="panel">
-  <div class="logo">🐝 Bee DOOH Frota</div>
-  <div id="cars"></div>
+<div id="content">
+
+  <!-- MAPA -->
+  <div id="mapaView" style="display:flex; width:100%;">
+    <div id="map"></div>
+    <div id="panel"></div>
+  </div>
+
+  <!-- CADASTRO -->
+  <div id="cadastroView" style="display:none; padding:20px; width:100%;">
+
+    <h2>Cadastro de Anunciante</h2>
+
+    <input id="nome" placeholder="Nome do cliente"/>
+    <input id="bairro" placeholder="Bairro (Centro, Feitoria...)"/>
+    <input id="video" placeholder="URL do vídeo"/>
+
+    <button onclick="salvar()">Salvar</button>
+
+    <h3>Lista</h3>
+    <div id="lista"></div>
+
+  </div>
+
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
 <script>
+// TROCAR TELA
+function mostrar(tela){
+  document.getElementById("mapaView").style.display = tela==="mapa"?"flex":"none";
+  document.getElementById("cadastroView").style.display = tela==="cadastro"?"block":"none";
+}
+
+// STORAGE
+function getAds(){
+  return JSON.parse(localStorage.getItem("ads")||"[]");
+}
+
+function salvar(){
+  const ads = getAds();
+
+  ads.push({
+    nome:document.getElementById("nome").value,
+    bairro:document.getElementById("bairro").value,
+    video:document.getElementById("video").value
+  });
+
+  localStorage.setItem("ads", JSON.stringify(ads));
+  listar();
+}
+
+function listar(){
+  const lista = document.getElementById("lista");
+  lista.innerHTML = "";
+
+  getAds().forEach(a=>{
+    lista.innerHTML += `<div>${a.nome} - ${a.bairro}</div>`;
+  });
+}
+
+listar();
+
 // MAPA
-const map = L.map('map').setView([-29.754, -51.149], 13);
+const map = L.map('map').setView([-29.754,-51.149],13);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
 // ZONAS
-const zonas = [
-  {
-    nome:"Centro",
-    anuncio:"Farmácia",
-    video:"https://cdn.coverr.co/videos/coverr-shopping-in-the-city-5176/1080p.mp4",
-    coords:[[-29.75,-51.16],[-29.75,-51.14],[-29.76,-51.14],[-29.76,-51.16]]
-  },
-  {
-    nome:"Feitoria",
-    anuncio:"Supermercado",
-    video:"https://cdn.coverr.co/videos/coverr-people-shopping-in-a-supermarket-4983/1080p.mp4",
-    coords:[[-29.76,-51.16],[-29.76,-51.14],[-29.78,-51.14],[-29.78,-51.16]]
-  },
-  {
-    nome:"Scharlau",
-    anuncio:"Oficina",
-    video:"https://cdn.coverr.co/videos/coverr-mechanic-working-1602/1080p.mp4",
-    coords:[[-29.74,-51.14],[-29.74,-51.12],[-29.76,-51.12],[-29.76,-51.14]]
-  }
-];
-
-// desenhar zonas
-zonas.forEach(z=>{
-  L.polygon(z.coords,{color:"#FFD600", fillOpacity:0.05}).addTo(map);
-});
+const zonas = ["Centro","Feitoria","Scharlau"];
 
 // PIN
 function pin(){
@@ -134,88 +185,70 @@ function pin(){
   });
 }
 
-// DETECÇÃO
-function dentro(p, vs){
-  let x=p[0], y=p[1], inside=false;
-  for(let i=0,j=vs.length-1;i<vs.length;j=i++){
-    let xi=vs[i][0], yi=vs[i][1];
-    let xj=vs[j][0], yj=vs[j][1];
-    let intersect=((yi>y)!=(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi);
-    if(intersect) inside=!inside;
-  }
-  return inside;
-}
-
-// CRIAR CARROS
+// CARROS
 const carros = [];
 const markers = {};
 
-for(let i=1;i<=8;i++){
+for(let i=1;i<=6;i++){
   carros.push({
     id:"Carro "+i,
     lat:-29.754+(Math.random()-0.5)*0.02,
     lng:-51.149+(Math.random()-0.5)*0.02,
-    step:0,
     videoAtual:""
   });
 }
 
-// HTML dos carros
-const carsDiv = document.getElementById("cars");
+// PAINEL
+const panel = document.getElementById("panel");
 
 carros.forEach(c=>{
 
-  // marker
   const marker = L.marker([c.lat,c.lng],{icon:pin()}).addTo(map);
   markers[c.id] = marker;
 
-  // criar card
   const div = document.createElement("div");
   div.className="car";
+  div.id="card"+c.id;
 
   div.innerHTML = `
     <b>${c.id}</b>
     <video id="vid${c.id}" autoplay muted loop></video>
-    <div class="info">
-      Bairro: <span id="b${c.id}">-</span><br>
-      Anúncio: <span id="a${c.id}">-</span>
-    </div>
+    <div id="info${c.id}">-</div>
   `;
 
-  carsDiv.appendChild(div);
+  panel.appendChild(div);
 
 });
 
 // LOOP
 setInterval(()=>{
 
+  const ads = getAds();
+
   carros.forEach(c=>{
 
-    // movimento aleatório
     c.lat += (Math.random()-0.5)*0.002;
     c.lng += (Math.random()-0.5)*0.002;
 
     markers[c.id].setLatLng([c.lat,c.lng]);
 
-    let bairro="-", anuncio="-", video="";
+    // escolher bairro aleatório (simulação)
+    const bairro = zonas[Math.floor(Math.random()*zonas.length)];
 
-    zonas.forEach(z=>{
-      if(dentro([c.lat,c.lng], z.coords)){
-        bairro=z.nome;
-        anuncio=z.anuncio;
-        video=z.video;
-      }
-    });
-
-    document.getElementById("b"+c.id).innerText=bairro;
-    document.getElementById("a"+c.id).innerText=anuncio;
+    // buscar anúncio
+    const anuncio = ads.find(a=>a.bairro.toLowerCase()===bairro.toLowerCase());
 
     const vid = document.getElementById("vid"+c.id);
 
-    if(video && video !== c.videoAtual){
-      vid.src = video;
-      vid.play();
-      c.videoAtual = video;
+    if(anuncio){
+      document.getElementById("info"+c.id).innerHTML =
+        bairro+" - "+anuncio.nome;
+
+      if(anuncio.video !== c.videoAtual){
+        vid.src = anuncio.video;
+        vid.play();
+        c.videoAtual = anuncio.video;
+      }
     }
 
   });

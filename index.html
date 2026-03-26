@@ -5,189 +5,217 @@
   <title>Bee DOOH</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
+
+  <!-- Cluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
 
   <style>
     body {
       margin: 0;
       font-family: Arial;
+      display: flex;
       background: #0b0b0b;
       color: #fff;
     }
 
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 12px;
+    #map {
+      height: 100vh;
+      width: 75%;
+    }
+
+    /* PAINEL */
+    #panel {
+      width: 25%;
       background: #111;
-      font-size: 12px;
-      border-bottom: 1px solid #222;
+      padding: 15px;
+      border-left: 1px solid #222;
     }
 
     .logo {
       color: #FFD600;
       font-weight: bold;
+      margin-bottom: 20px;
+      font-size: 18px;
     }
 
-    #stats {
-      display: flex;
-      gap: 15px;
-    }
-
-    .stat {
-      text-align: center;
-      font-size: 11px;
-    }
-
-    .stat span {
-      display: block;
+    .card {
+      background: #1a1a1a;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
       font-size: 13px;
+    }
+
+    .card span {
+      display: block;
       color: #FFD600;
+      font-size: 18px;
       font-weight: bold;
     }
 
-    #map {
-      height: 92vh;
+    /* PIN PULSANTE */
+    .pulse {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      position: relative;
     }
 
-    .pin {
-      width: 18px;
-      height: 18px;
+    .pulse::after {
+      content: '';
+      width: 14px;
+      height: 14px;
+      position: absolute;
       border-radius: 50%;
-      box-shadow: 0 0 10px rgba(0,0,0,0.6);
-      border: 2px solid #fff;
+      animation: pulse 1.5s infinite;
+      opacity: 0.6;
     }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.7; }
+      100% { transform: scale(3); opacity: 0; }
+    }
+
+    .online {
+      background: #00FF88;
+    }
+
+    .online::after {
+      background: #00FF88;
+    }
+
+    .offline {
+      background: #FF3B3B;
+    }
+
+    .offline::after {
+      background: #FF3B3B;
+    }
+
   </style>
 </head>
 
 <body>
 
-<header>
-  <div class="logo">🐝 Bee</div>
-  <div id="stats">
-    <div class="stat">On<span id="online">0</span></div>
-    <div class="stat">Off<span id="offline">0</span></div>
-    <div class="stat">Min<span id="tempo">0</span></div>
-  </div>
-</header>
-
 <div id="map"></div>
 
+<div id="panel">
+  <div class="logo">🐝 Bee DOOH</div>
+
+  <div class="card">Online<span id="online">0</span></div>
+  <div class="card">Offline<span id="offline">0</span></div>
+  <div class="card">Tempo médio<span id="tempo">0</span></div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
 <script>
-// MAPA MAIS MODERNO (Carto)
+// MAPA MODERNO
 const map = L.map('map').setView([-29.754, -51.149], 13);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap & Carto'
-}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-// CRIAR PIN MODERNO
-function criarPin(cor) {
+// CLUSTER
+const cluster = L.markerClusterGroup();
+map.addLayer(cluster);
+
+// PIN
+function criarPin(status) {
   return L.divIcon({
     className: '',
-    html: `<div class="pin" style="background:${cor}"></div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9]
+    html: `<div class="pulse ${status}"></div>`,
+    iconSize: [14,14],
+    iconAnchor: [7,7]
   });
 }
 
-// CARROS (simulação)
+// BAIRROS (simples exemplo)
+const bairros = [
+  {nome:"Centro", lat:-29.754, lng:-51.149},
+  {nome:"Feitoria", lat:-29.770, lng:-51.150},
+  {nome:"Scharlau", lat:-29.740, lng:-51.130}
+];
+
+bairros.forEach(b => {
+  L.marker([b.lat, b.lng], {
+    icon: L.divIcon({
+      html:`<div style="font-size:12px;color:#555;">${b.nome}</div>`
+    })
+  }).addTo(map);
+});
+
+// CARROS
 const carros = [];
 const markers = {};
 const trilhas = {};
 
-for (let i = 1; i <= 10; i++) {
+for (let i = 1; i <= 20; i++) {
   carros.push({
-    id: "carro" + i,
-    lat: -29.754 + (Math.random() - 0.5) * 0.02,
-    lng: -51.149 + (Math.random() - 0.5) * 0.02,
+    id: "carro"+i,
+    lat: -29.754 + (Math.random()-0.5)*0.02,
+    lng: -51.149 + (Math.random()-0.5)*0.02,
     online: true,
     tempoAtivo: 0,
     path: []
   });
 }
 
-// CRIAR ELEMENTOS
-carros.forEach(carro => {
+// CRIAR
+carros.forEach(c => {
 
-  const marker = L.marker([carro.lat, carro.lng], {
-    icon: criarPin("#00FF88")
-  }).addTo(map);
+  const marker = L.marker([c.lat, c.lng], {
+    icon: criarPin("online")
+  });
+
+  cluster.addLayer(marker);
 
   const linha = L.polyline([], {
     color: "#FFD600",
-    weight: 3,
-    opacity: 0.7
+    weight: 2
   }).addTo(map);
 
-  markers[carro.id] = marker;
-  trilhas[carro.id] = linha;
+  markers[c.id] = marker;
+  trilhas[c.id] = linha;
 });
 
 // LOOP
-setInterval(() => {
+setInterval(()=>{
 
-  let onlineCount = 0;
-  let offlineCount = 0;
-  let totalTempo = 0;
+  let online=0, offline=0, tempoTotal=0;
 
-  carros.forEach(carro => {
+  carros.forEach(c=>{
 
-    // movimento
-    carro.lat += (Math.random() - 0.5) * 0.001;
-    carro.lng += (Math.random() - 0.5) * 0.001;
+    c.lat += (Math.random()-0.5)*0.001;
+    c.lng += (Math.random()-0.5)*0.001;
 
-    // status
-    if (Math.random() < 0.03) {
-      carro.online = !carro.online;
-    }
+    if(Math.random()<0.03) c.online=!c.online;
 
-    if (carro.online) {
-      carro.tempoAtivo += 5;
-      onlineCount++;
-    } else {
-      offlineCount++;
-    }
+    if(c.online){ c.tempoAtivo+=5; online++; }
+    else offline++;
 
-    totalTempo += carro.tempoAtivo;
+    tempoTotal += c.tempoAtivo;
 
-    // atualizar marker
-    const marker = markers[carro.id];
-    marker.setLatLng([carro.lat, carro.lng]);
+    const marker = markers[c.id];
 
-    marker.setIcon(
-      criarPin(carro.online ? "#00FF88" : "#FF3B3B")
-    );
+    marker.setLatLng([c.lat,c.lng]);
+    marker.setIcon(criarPin(c.online?"online":"offline"));
 
-    // rastro
-    carro.path.push([carro.lat, carro.lng]);
+    c.path.push([c.lat,c.lng]);
+    if(c.path.length>20) c.path.shift();
 
-    if (carro.path.length > 20) {
-      carro.path.shift();
-    }
-
-    trilhas[carro.id].setLatLngs(carro.path);
-
-    const status = carro.online ? "🟢 Online" : "🔴 Offline";
-
-    marker.bindPopup(`
-      <b>${carro.id}</b><br>
-      ${status}<br>
-      ⏱️ ${Math.floor(carro.tempoAtivo/60)} min
-    `);
+    trilhas[c.id].setLatLngs(c.path);
 
   });
 
-  // atualizar topo
-  document.getElementById("online").innerText = onlineCount;
-  document.getElementById("offline").innerText = offlineCount;
-  document.getElementById("tempo").innerText =
-    Math.floor((totalTempo / carros.length) / 60);
+  document.getElementById("online").innerText=online;
+  document.getElementById("offline").innerText=offline;
+  document.getElementById("tempo").innerText=Math.floor((tempoTotal/carros.length)/60);
 
-}, 5000);
+},5000);
 
 </script>
 

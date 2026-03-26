@@ -1,101 +1,86 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Bee DOOH</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8"/>
+<title>Bee DOOH PRO</title>
 
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
 
-  <!-- Cluster -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
+<style>
+body {
+  margin:0;
+  display:flex;
+  font-family:Arial;
+}
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      display: flex;
-      background: #0b0b0b;
-      color: #fff;
-    }
+/* MAPA */
+#map { width:70%; height:100vh; }
 
-    #map {
-      height: 100vh;
-      width: 75%;
-    }
+/* PAINEL */
+#panel {
+  width:30%;
+  background:#111;
+  color:#fff;
+  padding:15px;
+}
 
-    /* PAINEL */
-    #panel {
-      width: 25%;
-      background: #111;
-      padding: 15px;
-      border-left: 1px solid #222;
-    }
+.logo {
+  color:#FFD600;
+  font-weight:bold;
+  font-size:18px;
+  margin-bottom:20px;
+}
 
-    .logo {
-      color: #FFD600;
-      font-weight: bold;
-      margin-bottom: 20px;
-      font-size: 18px;
-    }
+.card {
+  background:#1a1a1a;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+}
 
-    .card {
-      background: #1a1a1a;
-      padding: 12px;
-      border-radius: 10px;
-      margin-bottom: 10px;
-      font-size: 13px;
-    }
+.card span {
+  color:#FFD600;
+  font-size:18px;
+  display:block;
+}
 
-    .card span {
-      display: block;
-      color: #FFD600;
-      font-size: 18px;
-      font-weight: bold;
-    }
+/* PIN */
+.pulse {
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  position:relative;
+}
+.pulse::after {
+  content:'';
+  position:absolute;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  animation:pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%{transform:scale(1);opacity:.7;}
+  100%{transform:scale(3);opacity:0;}
+}
 
-    /* PIN PULSANTE */
-    .pulse {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      position: relative;
-    }
+.online { background:#00FF88; }
+.online::after { background:#00FF88; }
 
-    .pulse::after {
-      content: '';
-      width: 14px;
-      height: 14px;
-      position: absolute;
-      border-radius: 50%;
-      animation: pulse 1.5s infinite;
-      opacity: 0.6;
-    }
+.offline { background:#FF3B3B; }
+.offline::after { background:#FF3B3B; }
 
-    @keyframes pulse {
-      0% { transform: scale(1); opacity: 0.7; }
-      100% { transform: scale(3); opacity: 0; }
-    }
-
-    .online {
-      background: #00FF88;
-    }
-
-    .online::after {
-      background: #00FF88;
-    }
-
-    .offline {
-      background: #FF3B3B;
-    }
-
-    .offline::after {
-      background: #FF3B3B;
-    }
-
-  </style>
+/* BOTÕES */
+button {
+  width:100%;
+  padding:10px;
+  margin-top:5px;
+  background:#FFD600;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+</style>
 </head>
 
 <body>
@@ -107,115 +92,122 @@
 
   <div class="card">Online<span id="online">0</span></div>
   <div class="card">Offline<span id="offline">0</span></div>
-  <div class="card">Tempo médio<span id="tempo">0</span></div>
+  <div class="card">Bairro Atual<span id="bairro">-</span></div>
+  <div class="card">Anúncio<span id="anuncio">-</span></div>
+
+  <button onclick="modoDemo()">🎮 Modo Apresentação</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
 <script>
-// MAPA MODERNO
+// MAPA
 const map = L.map('map').setView([-29.754, -51.149], 13);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-// CLUSTER
-const cluster = L.markerClusterGroup();
-map.addLayer(cluster);
-
-// PIN
-function criarPin(status) {
-  return L.divIcon({
-    className: '',
-    html: `<div class="pulse ${status}"></div>`,
-    iconSize: [14,14],
-    iconAnchor: [7,7]
-  });
-}
-
-// BAIRROS (simples exemplo)
-const bairros = [
-  {nome:"Centro", lat:-29.754, lng:-51.149},
-  {nome:"Feitoria", lat:-29.770, lng:-51.150},
-  {nome:"Scharlau", lat:-29.740, lng:-51.130}
+// BAIRROS (ZONAS)
+const zonas = [
+  {
+    nome:"Centro",
+    anuncio:"Farmácia São João",
+    coords:[[-29.75,-51.16],[-29.75,-51.14],[-29.76,-51.14],[-29.76,-51.16]]
+  },
+  {
+    nome:"Feitoria",
+    anuncio:"Supermercado Econômico",
+    coords:[[-29.76,-51.16],[-29.76,-51.14],[-29.78,-51.14],[-29.78,-51.16]]
+  },
+  {
+    nome:"Scharlau",
+    anuncio:"Oficina do João",
+    coords:[[-29.74,-51.14],[-29.74,-51.12],[-29.76,-51.12],[-29.76,-51.14]]
+  }
 ];
 
-bairros.forEach(b => {
-  L.marker([b.lat, b.lng], {
-    icon: L.divIcon({
-      html:`<div style="font-size:12px;color:#555;">${b.nome}</div>`
-    })
-  }).addTo(map);
+// DESENHAR ZONAS
+zonas.forEach(z=>{
+  L.polygon(z.coords,{
+    color:"#FFD600",
+    fillOpacity:0.05
+  }).addTo(map).bindPopup(z.nome);
 });
 
-// CARROS
-const carros = [];
-const markers = {};
-const trilhas = {};
-
-for (let i = 1; i <= 20; i++) {
-  carros.push({
-    id: "carro"+i,
-    lat: -29.754 + (Math.random()-0.5)*0.02,
-    lng: -51.149 + (Math.random()-0.5)*0.02,
-    online: true,
-    tempoAtivo: 0,
-    path: []
+// CRIAR PIN
+function pin(status){
+  return L.divIcon({
+    html:`<div class="pulse ${status}"></div>`,
+    className:'',
+    iconSize:[14,14]
   });
 }
 
-// CRIAR
-carros.forEach(c => {
+// CARRO (1 principal pra demo)
+let carro = {
+  lat:-29.754,
+  lng:-51.149,
+  online:true,
+  step:0
+};
 
-  const marker = L.marker([c.lat, c.lng], {
-    icon: criarPin("online")
-  });
+const rota = [
+  [-29.754,-51.149],
+  [-29.758,-51.150],
+  [-29.765,-51.150],
+  [-29.770,-51.150],
+  [-29.755,-51.135]
+];
 
-  cluster.addLayer(marker);
+const marker = L.marker([carro.lat,carro.lng],{
+  icon:pin("online")
+}).addTo(map);
 
-  const linha = L.polyline([], {
-    color: "#FFD600",
-    weight: 2
-  }).addTo(map);
+// DETECTAR BAIRRO
+function dentroPoligono(ponto, vs){
+  let x=ponto[0], y=ponto[1];
+  let inside=false;
 
-  markers[c.id] = marker;
-  trilhas[c.id] = linha;
-});
+  for(let i=0,j=vs.length-1;i<vs.length;j=i++){
+    let xi=vs[i][0], yi=vs[i][1];
+    let xj=vs[j][0], yj=vs[j][1];
+
+    let intersect = ((yi>y)!=(yj>y)) &&
+      (x < (xj-xi)*(y-yi)/(yj-yi)+xi);
+    if(intersect) inside=!inside;
+  }
+  return inside;
+}
 
 // LOOP
 setInterval(()=>{
 
-  let online=0, offline=0, tempoTotal=0;
+  // mover
+  carro.step = (carro.step+1)%rota.length;
+  carro.lat = rota[carro.step][0];
+  carro.lng = rota[carro.step][1];
 
-  carros.forEach(c=>{
+  marker.setLatLng([carro.lat,carro.lng]);
 
-    c.lat += (Math.random()-0.5)*0.001;
-    c.lng += (Math.random()-0.5)*0.001;
+  // detectar zona
+  let bairroAtual = "Fora de zona";
+  let anuncioAtual = "-";
 
-    if(Math.random()<0.03) c.online=!c.online;
-
-    if(c.online){ c.tempoAtivo+=5; online++; }
-    else offline++;
-
-    tempoTotal += c.tempoAtivo;
-
-    const marker = markers[c.id];
-
-    marker.setLatLng([c.lat,c.lng]);
-    marker.setIcon(criarPin(c.online?"online":"offline"));
-
-    c.path.push([c.lat,c.lng]);
-    if(c.path.length>20) c.path.shift();
-
-    trilhas[c.id].setLatLngs(c.path);
-
+  zonas.forEach(z=>{
+    if(dentroPoligono([carro.lat,carro.lng], z.coords)){
+      bairroAtual = z.nome;
+      anuncioAtual = z.anuncio;
+    }
   });
 
-  document.getElementById("online").innerText=online;
-  document.getElementById("offline").innerText=offline;
-  document.getElementById("tempo").innerText=Math.floor((tempoTotal/carros.length)/60);
+  document.getElementById("bairro").innerText = bairroAtual;
+  document.getElementById("anuncio").innerText = anuncioAtual;
 
-},5000);
+},3000);
+
+// MODO DEMO
+function modoDemo(){
+  alert("Simulação iniciada: observe o carro mudando de bairro e anúncios.");
+}
 
 </script>
 

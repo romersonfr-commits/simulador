@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <title>Bee DOOH - Painel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
 
   <style>
     body {
@@ -20,10 +22,30 @@
       padding: 15px;
       font-weight: bold;
       text-align: center;
+      font-size: 18px;
+    }
+
+    #dashboard {
+      display: flex;
+      justify-content: space-around;
+      background: #1a1a1a;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    .card {
+      text-align: center;
+    }
+
+    .card span {
+      display: block;
+      font-size: 18px;
+      font-weight: bold;
+      color: #FFD600;
     }
 
     #map {
-      height: 90vh;
+      height: 80vh;
     }
   </style>
 </head>
@@ -31,59 +53,86 @@
 <body>
 
 <header>🐝 Bee Geomarketing - Monitoramento</header>
+
+<div id="dashboard">
+  <div class="card">Online<span id="online">0</span></div>
+  <div class="card">Offline<span id="offline">0</span></div>
+  <div class="card">Tempo Médio<span id="tempo">0 min</span></div>
+</div>
+
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
 <script>
+// MAPA
 const map = L.map('map').setView([-29.754, -51.149], 13);
 
-// mapa base
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+  .addTo(map);
 
-// simulação de 10 carros
+// GERAR 10 CARROS
 const carros = [];
+const markers = {};
 
 for (let i = 1; i <= 10; i++) {
   carros.push({
     id: "carro" + i,
-    lat: -29.75 + (Math.random() - 0.5) * 0.02,
-    lng: -51.15 + (Math.random() - 0.5) * 0.02,
+    lat: -29.754 + (Math.random() - 0.5) * 0.02,
+    lng: -51.149 + (Math.random() - 0.5) * 0.02,
     online: true,
     tempoAtivo: 0
   });
 }
 
-// criar marcadores
-const markers = {};
-
+// CRIAR MARKERS
 carros.forEach(carro => {
-  const marker = L.marker([carro.lat, carro.lng]).addTo(map)
-    .bindPopup(`${carro.id}<br>Online`);
+  const marker = L.circleMarker([carro.lat, carro.lng], {
+    radius: 8,
+    color: "#FFD600",
+    fillColor: "#FFD600",
+    fillOpacity: 0.9
+  }).addTo(map);
 
+  marker.bindPopup(carro.id);
   markers[carro.id] = marker;
 });
 
-// simular movimento + status
+// ATUALIZAÇÃO
 setInterval(() => {
+  let onlineCount = 0;
+  let offlineCount = 0;
+  let totalTempo = 0;
+
   carros.forEach(carro => {
 
-    // movimentação fake
+    // movimento
     carro.lat += (Math.random() - 0.5) * 0.001;
     carro.lng += (Math.random() - 0.5) * 0.001;
 
-    // simular online/offline
-    if (Math.random() < 0.05) {
+    // status aleatório
+    if (Math.random() < 0.03) {
       carro.online = !carro.online;
     }
 
     if (carro.online) {
       carro.tempoAtivo += 5;
+      onlineCount++;
+    } else {
+      offlineCount++;
     }
 
-    // atualizar marker
+    totalTempo += carro.tempoAtivo;
+
     const marker = markers[carro.id];
+
     marker.setLatLng([carro.lat, carro.lng]);
+
+    // cor por status
+    marker.setStyle({
+      color: carro.online ? "#00FF00" : "#FF0000",
+      fillColor: carro.online ? "#00FF00" : "#FF0000"
+    });
 
     const status = carro.online ? "🟢 Online" : "🔴 Offline";
 
@@ -93,7 +142,15 @@ setInterval(() => {
       ⏱️ ${Math.floor(carro.tempoAtivo/60)} min
     `);
   });
+
+  // atualizar dashboard
+  document.getElementById("online").innerText = onlineCount;
+  document.getElementById("offline").innerText = offlineCount;
+  document.getElementById("tempo").innerText =
+    Math.floor((totalTempo / carros.length) / 60) + " min";
+
 }, 5000);
+
 </script>
 
 </body>

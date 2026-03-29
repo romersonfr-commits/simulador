@@ -1,261 +1,84 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<title>Bee DOOH SaaS</title>
+import { useEffect, useState } from "react";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
+const firebaseConfig = {
+  apiKey: "const firebaseConfig = {
+  apiKey: "AIzaSyCtxbIfvOdQadF0lu3D6yACjyIygVDK9dU",
+  authDomain: "bee-dooh.firebaseapp.com",
+  projectId: "bee-dooh",
+  storageBucket: "bee-dooh.firebasestorage.app",
+  messagingSenderId: "594686167676",
+  appId: "1:594686167676:web:77f7ee552c8ed1a4d997f9"
+};",
+  authDomain: "bee-dooh.firebaseapp.com",
+  projectId: "bee-dooh",
+};
 
-<style>
-body {
-  margin:0;
-  font-family:Arial;
-  display:flex;
-  height:100vh;
-}
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-/* MENU */
-#menu {
-  width:200px;
-  background:#111;
-  color:#fff;
-  padding:10px;
-}
+export default function AdminPanel() {
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-button {
-  width:100%;
-  padding:10px;
-  margin-bottom:5px;
-  background:#FFD600;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-}
+  const [deviceId, setDeviceId] = useState("carro_01");
+  const [videos, setVideos] = useState("");
 
-/* CONTEÚDO */
-#content {
-  flex:1;
-  display:flex;
-}
+  useEffect(() => {
+    onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
+  }, []);
 
-/* MAPA */
-#map { width:60%; }
-
-/* PAINEL */
-#panel {
-  width:40%;
-  background:#1a1a1a;
-  color:#fff;
-  padding:10px;
-  overflow:auto;
-}
-
-/* CARDS */
-.car {
-  background:#222;
-  padding:10px;
-  margin-bottom:10px;
-  border-radius:10px;
-}
-
-video {
-  width:100%;
-  height:120px;
-  border-radius:8px;
-}
-
-/* FORM */
-input {
-  width:100%;
-  padding:8px;
-  margin-bottom:5px;
-}
-
-/* PIN */
-.pulse {
-  width:14px;
-  height:14px;
-  border-radius:50%;
-  position:relative;
-}
-.pulse::after {
-  content:'';
-  position:absolute;
-  width:14px;
-  height:14px;
-  border-radius:50%;
-  animation:pulse 1.5s infinite;
-}
-@keyframes pulse {
-  0%{transform:scale(1);opacity:.7;}
-  100%{transform:scale(3);opacity:0;}
-}
-.online { background:#00FF88; }
-.online::after { background:#00FF88; }
-
-</style>
-</head>
-
-<body>
-
-<div id="menu">
-  <h3 style="color:#FFD600;">Bee DOOH</h3>
-  <button onclick="mostrar('mapa')">🚗 Operação</button>
-  <button onclick="mostrar('cadastro')">📢 Anunciantes</button>
-</div>
-
-<div id="content">
-
-  <!-- MAPA -->
-  <div id="mapaView" style="display:flex; width:100%;">
-    <div id="map"></div>
-    <div id="panel"></div>
-  </div>
-
-  <!-- CADASTRO -->
-  <div id="cadastroView" style="display:none; padding:20px; width:100%;">
-
-    <h2>Cadastro de Anunciante</h2>
-
-    <input id="nome" placeholder="Nome do cliente"/>
-    <input id="bairro" placeholder="Bairro (Centro, Feitoria...)"/>
-    <input id="video" placeholder="URL do vídeo"/>
-
-    <button onclick="salvar()">Salvar</button>
-
-    <h3>Lista</h3>
-    <div id="lista"></div>
-
-  </div>
-
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-
-<script>
-// TROCAR TELA
-function mostrar(tela){
-  document.getElementById("mapaView").style.display = tela==="mapa"?"flex":"none";
-  document.getElementById("cadastroView").style.display = tela==="cadastro"?"block":"none";
-}
-
-// STORAGE
-function getAds(){
-  return JSON.parse(localStorage.getItem("ads")||"[]");
-}
-
-function salvar(){
-  const ads = getAds();
-
-  ads.push({
-    nome:document.getElementById("nome").value,
-    bairro:document.getElementById("bairro").value,
-    video:document.getElementById("video").value
-  });
-
-  localStorage.setItem("ads", JSON.stringify(ads));
-  listar();
-}
-
-function listar(){
-  const lista = document.getElementById("lista");
-  lista.innerHTML = "";
-
-  getAds().forEach(a=>{
-    lista.innerHTML += `<div>${a.nome} - ${a.bairro}</div>`;
-  });
-}
-
-listar();
-
-// MAPA
-const map = L.map('map').setView([-29.754,-51.149],13);
-
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-
-// ZONAS
-const zonas = ["Centro","Feitoria","Scharlau"];
-
-// PIN
-function pin(){
-  return L.divIcon({
-    html:`<div class="pulse online"></div>`,
-    className:'',
-    iconSize:[14,14]
-  });
-}
-
-// CARROS
-const carros = [];
-const markers = {};
-
-for(let i=1;i<=6;i++){
-  carros.push({
-    id:"Carro "+i,
-    lat:-29.754+(Math.random()-0.5)*0.02,
-    lng:-51.149+(Math.random()-0.5)*0.02,
-    videoAtual:""
-  });
-}
-
-// PAINEL
-const panel = document.getElementById("panel");
-
-carros.forEach(c=>{
-
-  const marker = L.marker([c.lat,c.lng],{icon:pin()}).addTo(map);
-  markers[c.id] = marker;
-
-  const div = document.createElement("div");
-  div.className="car";
-  div.id="card"+c.id;
-
-  div.innerHTML = `
-    <b>${c.id}</b>
-    <video id="vid${c.id}" autoplay muted loop></video>
-    <div id="info${c.id}">-</div>
-  `;
-
-  panel.appendChild(div);
-
-});
-
-// LOOP
-setInterval(()=>{
-
-  const ads = getAds();
-
-  carros.forEach(c=>{
-
-    c.lat += (Math.random()-0.5)*0.002;
-    c.lng += (Math.random()-0.5)*0.002;
-
-    markers[c.id].setLatLng([c.lat,c.lng]);
-
-    // escolher bairro aleatório (simulação)
-    const bairro = zonas[Math.floor(Math.random()*zonas.length)];
-
-    // buscar anúncio
-    const anuncio = ads.find(a=>a.bairro.toLowerCase()===bairro.toLowerCase());
-
-    const vid = document.getElementById("vid"+c.id);
-
-    if(anuncio){
-      document.getElementById("info"+c.id).innerHTML =
-        bairro+" - "+anuncio.nome;
-
-      if(anuncio.video !== c.videoAtual){
-        vid.src = anuncio.video;
-        vid.play();
-        c.videoAtual = anuncio.video;
-      }
+  const login = async () => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (e) {
+      alert("Erro no login");
     }
+  };
 
-  });
+  const salvar = async () => {
+    const lista = videos.split("\n").filter(v => v);
 
-},3000);
+    await setDoc(doc(db, "devices", deviceId), {
+      status: "on",
+      videos: lista
+    });
 
-</script>
+    alert("Anúncios atualizados!");
+  };
 
-</body>
-</html>
+  if (!user) {
+    return (
+      <div className="p-10">
+        <h1 className="text-xl mb-4">Login Admin</h1>
+        <input placeholder="Email" onChange={e => setEmail(e.target.value)} className="border p-2 mb-2 block" />
+        <input type="password" placeholder="Senha" onChange={e => setPassword(e.target.value)} className="border p-2 mb-2 block" />
+        <button onClick={login} className="bg-black text-white p-2">Entrar</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-10">
+      <h1 className="text-2xl mb-4">Painel Bee DOOH</h1>
+
+      <label>Carro:</label>
+      <select value={deviceId} onChange={e => setDeviceId(e.target.value)} className="border p-2 mb-4 block">
+        <option value="carro_01">Carro 01</option>
+        <option value="carro_02">Carro 02</option>
+        <option value="carro_03">Carro 03</option>
+      </select>
+
+      <label>Vídeos (1 por linha):</label>
+      <textarea onChange={e => setVideos(e.target.value)} className="border p-2 w-full h-40 mb-4" />
+
+      <button onClick={salvar} className="bg-black text-white p-3">Publicar Anúncios</button>
+    </div>
+  );
+}

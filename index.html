@@ -1,20 +1,16 @@
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 
+// Configuração do Firebase corrigida
 const firebaseConfig = {
-  apiKey: const firebaseConfig = {
   apiKey: "AIzaSyCtxbIfvOdQadF0lu3D6yACjyIygVDK9dU",
   authDomain: "bee-dooh.firebaseapp.com",
   projectId: "bee-dooh",
   storageBucket: "bee-dooh.firebasestorage.app",
   messagingSenderId: "594686167676",
-  appId: "1:594686167676:web:77f7ee552c8ed1a4d997f9
-};
-,
-  authDomain: "bee-dooh.firebaseapp.com",
-  projectId: "bee-dooh",
+  appId: "1:594686167676:web:77f7ee552c8ed1a4d997f9"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -25,41 +21,54 @@ export default function AdminPanel() {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [deviceId, setDeviceId] = useState("carro_01");
   const [videos, setVideos] = useState("");
 
   useEffect(() => {
-    onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
     });
+    return () => unsubscribe(); // limpa o listener
   }, []);
 
   const login = async () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (e) {
-      alert("Erro no login");
+      alert("Erro no login: " + e.message);
     }
   };
 
   const salvar = async () => {
-    const lista = videos.split("\n").filter(v => v);
-
-    await setDoc(doc(db, "devices", deviceId), {
-      status: "on",
-      videos: lista
-    });
-
-    alert("Anúncios atualizados!");
+    const lista = videos.split("\n").map(v => v.trim()).filter(v => v);
+    try {
+      await setDoc(doc(db, "devices", deviceId), {
+        status: "on",
+        videos: lista
+      });
+      alert("Anúncios atualizados!");
+    } catch (e) {
+      alert("Erro ao atualizar anúncios: " + e.message);
+    }
   };
 
   if (!user) {
     return (
       <div className="p-10">
         <h1 className="text-xl mb-4">Login Admin</h1>
-        <input placeholder="Email" onChange={e => setEmail(e.target.value)} className="border p-2 mb-2 block" />
-        <input type="password" placeholder="Senha" onChange={e => setPassword(e.target.value)} className="border p-2 mb-2 block" />
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          className="border p-2 mb-2 block"
+        />
+        <input
+          type="password"
+          placeholder="Senha"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          className="border p-2 mb-2 block"
+        />
         <button onClick={login} className="bg-black text-white p-2">Entrar</button>
       </div>
     );
@@ -70,14 +79,22 @@ export default function AdminPanel() {
       <h1 className="text-2xl mb-4">Painel Bee DOOH</h1>
 
       <label>Carro:</label>
-      <select value={deviceId} onChange={e => setDeviceId(e.target.value)} className="border p-2 mb-4 block">
+      <select
+        value={deviceId}
+        onChange={e => setDeviceId(e.target.value)}
+        className="border p-2 mb-4 block"
+      >
         <option value="carro_01">Carro 01</option>
         <option value="carro_02">Carro 02</option>
         <option value="carro_03">Carro 03</option>
       </select>
 
       <label>Vídeos (1 por linha):</label>
-      <textarea onChange={e => setVideos(e.target.value)} className="border p-2 w-full h-40 mb-4" />
+      <textarea
+        value={videos}
+        onChange={e => setVideos(e.target.value)}
+        className="border p-2 w-full h-40 mb-4"
+      />
 
       <button onClick={salvar} className="bg-black text-white p-3">Publicar Anúncios</button>
     </div>
